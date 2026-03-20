@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# 1. Garante que o script está rodando como root
+if [ "$EUID" -ne 0 ]; then 
+  echo "Por favor, execute como root (use sudo ./script.sh)"
+  exit
+fi
+
+echo "--- Iniciando configuração de acesso SSH ---"
+
+# 2. Alterar PasswordAuthentication para 'yes' no arquivo principal
+# Remove o comentário (#) se existir e garante que o valor seja 'yes'
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# 3. Tratar arquivos extras (comum em VPS como AWS, DigitalOcean, Oracle)
+# O arquivo 60-cloudimg-settings.conf costuma sobrescrever a config principal
+CLOUD_CONFIG="/etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
+
+if [ -f "$CLOUD_CONFIG" ]; then
+    echo "Ajustando configurações de nuvem em $CLOUD_CONFIG..."
+    sed -i 's/^PasswordAuthentication .*/PasswordAuthentication yes/' "$CLOUD_CONFIG"
+else
+    echo "Arquivo de configuração de nuvem não encontrado, pulando este passo."
+fi
+
+# 4. Perguntar a nova senha ao usuário
+echo "------------------------------------------"
+echo "Defina a nova senha para o usuário root:"
+passwd root
+
+# 5. Reiniciar o serviço SSH para aplicar as mudanças
+echo "------------------------------------------"
+echo "Reiniciando o serviço SSH..."
+systemctl restart ssh
+
+echo "Configuração concluída com sucesso!"
