@@ -1,4 +1,5 @@
 #!/bin/bash
+# Link de instalação: wget -O /usr/bin/alterar-senha "https://raw.githubusercontent.com/miau4/ALTERAR-SENHA-SSH/refs/heads/main/alterar-senha?cache=$(date +%s)" && chmod +x /usr/bin/alterar-senha
 
 # 1. Ativar PermitRootLogin yes no arquivo principal
 sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config
@@ -7,23 +8,29 @@ sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config
 sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
 # 3. Aplicar as mesmas configurações no arquivo de nuvem (se existir)
-# Muitas VPS (AWS, Oracle, Google Cloud) usam este arquivo que sobrescreve o principal
 CLOUD_CONFIG="/etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
 if [ -f "$CLOUD_CONFIG" ]; then
     sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin yes/' "$CLOUD_CONFIG"
     sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' "$CLOUD_CONFIG"
 fi
 
-# 4. Alterar a senha do root (O sistema solicitará que você digite a nova senha)
+# 4. Alterar a senha do root
 echo "------------------------------------------"
 echo "DEFINA A NOVA SENHA PARA O USUÁRIO ROOT:"
 echo "------------------------------------------"
+# O comando passwd solicita a nova senha automaticamente
 passwd root
 
 # 5. Reiniciar o serviço SSH para aplicar as mudanças
-systemctl restart ssh
-
-echo "------------------------------------------"
-echo "CONFIGURAÇÕES APLICADAS E SSH REINICIADO!"
-echo "Agora você pode logar como root usando sua senha."
-echo "------------------------------------------"
+if systemctl restart ssh; then
+    echo "------------------------------------------"
+    echo "CONFIGURAÇÕES APLICADAS E SSH REINICIADO!"
+    echo "Agora você pode logar como root usando sua senha."
+    echo "------------------------------------------"
+else
+    # Algumas distros usam sshd ao invés de ssh
+    systemctl restart sshd
+    echo "------------------------------------------"
+    echo "CONFIGURAÇÕES APLICADAS E SSHD REINICIADO!"
+    echo "------------------------------------------"
+fi
